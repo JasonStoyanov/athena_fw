@@ -10,7 +10,6 @@
 #include <devicetree.h>
 #include <drivers/sensor.h>
 
-
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
@@ -20,14 +19,12 @@
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
-
-/*  Select the type of Eddystone frame type 
+/*  Select the type of Eddystone frame type
    0 - URL frame type
    1 - UID frame type
+   2 - DBG frame
    */
-#define EDDYSTONE_FRAME_TYPE 1
-
-
+#define EDDYSTONE_FRAME_TYPE 2
 
 #if (EDDYSTONE_FRAME_TYPE == 0)
 /*
@@ -39,34 +36,69 @@ static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
 	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
 	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
-		      0xaa, 0xfe, /* Eddystone UUID */
-		      0x10, /* Eddystone-URL frame type */
-		      0x00, /* Calibrated Tx power at 0m */
-		      0x00, /* URL Scheme Prefix http://www. */
-		      'o', 'p', 'e', 'n', '4', 't',
-		      'e', 'c', 'h',
-		      0x07) /* .com */
+				  0xaa, 0xfe, /* Eddystone UUID */
+				  0x10,		  /* Eddystone-URL frame type */
+				  0x00,		  /* Calibrated Tx power at 0m */
+				  0x00,		  /* URL Scheme Prefix http://www. */
+				  'o', 'p', 'e', 'n', '4', 't',
+				  'e', 'c', 'h',
+				  0x07) /* .com */
 };
 #elif (EDDYSTONE_FRAME_TYPE == 1)
 
 /*
-* Set Advertisement data. Based on the Eddystone specification:
-* https://github.com/google/eddystone/blob/master/protocol-specification.md
-* https://github.com/google/eddystone/tree/master/eddystone-url
-*/
+ * Set Advertisement data. Based on the Eddystone specification:
+ * https://github.com/google/eddystone/blob/master/protocol-specification.md
+ * https://github.com/google/eddystone/tree/master/eddystone-url
+ */
 static const struct bt_data ad[] = {
-  BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
-  BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
-  BT_DATA_BYTES(BT_DATA_SVC_DATA16,
-      0xaa, 0xfe, /* Eddystone UUID */
-      0x00, /* Eddystone-UID frame type */
-      0x00, /* Calibrated Tx power at 0m */
-      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,0x09, /* 10-byte Namespace */
-      0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f) /* 6-byte Instance */
+	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
+	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
+				  0xaa, 0xfe,												  /* Eddystone UUID */
+				  0x00,														  /* Eddystone-UID frame type */
+				  0x00,														  /* Calibrated Tx power at 0m */
+				  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, /* 10-byte Namespace */
+				  0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f)						  /* 6-byte Instance */
+};
+
+#elif (EDDYSTONE_FRAME_TYPE == 2)
+
+/*
+ * Set Advertisement data. Based on the Eddystone specification:
+ * https://github.com/google/eddystone/blob/master/protocol-specification.md
+ * https://github.com/google/eddystone/tree/master/eddystone-url
+ */
+static const struct bt_data ad[] = {
+	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
+	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
+				  0xaa, 0xfe,																											  /* Eddystone UUID */
+				  0x00,																													  /* Eddystone-UID frame type */
+				  0x00,																													  /* Calibrated Tx power at 0m */
+				  BT_UUID_16_ENCODE(0x1122), BT_UUID_16_ENCODE(0x3344), BT_UUID_16_ENCODE(0x5566), BT_UUID_16_ENCODE(0x7788), 0x08, 0x09, /* 10-byte Namespace */
+				  0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f)																					  /* 6-byte Instance */
 };
 
 #endif
 
+static struct bt_data ad_bme280[] = {
+	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
+	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
+				  0xaa, 0xfe,																											  /* Eddystone UUID */
+				  0x00,																													  /* Eddystone-UID frame type */
+				  0x00,																													  /* Calibrated Tx power at 0m */
+				  BT_UUID_16_ENCODE(0x1122), BT_UUID_16_ENCODE(0x3344), BT_UUID_16_ENCODE(0x5566), BT_UUID_16_ENCODE(0x7788), 0x08, 0x09, /* 10-byte Namespace */
+				  0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f)																					  /* 6-byte Instance */
+};
+
+static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
+							 0xaa, 0xfe,																											 /* Eddystone UUID */
+							 0x00,																													 /* Eddystone-UID frame type */
+							 0x00,																													 /* Calibrated Tx power at 0m */
+							 BT_UUID_16_ENCODE(0x1122), BT_UUID_16_ENCODE(0x3344), BT_UUID_16_ENCODE(0x5566), BT_UUID_16_ENCODE(0x7788), 0x08, 0x09, /* 10-byte Namespace */
+							 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 /* Set Scan Response data */
 static const struct bt_data sd[] = {
@@ -82,8 +114,9 @@ static void bt_ready()
 
 	/* Start advertising */
 	err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY, ad, ARRAY_SIZE(ad),
-			      sd, ARRAY_SIZE(sd));
-	if (err) {
+						  sd, ARRAY_SIZE(sd));
+	if (err)
+	{
 		printk("Advertising failed to start (err %d)\n", err);
 		return;
 	}
@@ -108,16 +141,18 @@ static const struct device *get_bme280_device(void)
 {
 	const struct device *dev = DEVICE_DT_GET_ANY(bosch_bme280);
 
-	if (dev == NULL) {
+	if (dev == NULL)
+	{
 		/* No such node, or the node does not have status "okay". */
 		printk("\nError: no device found.\n");
 		return NULL;
 	}
 
-	if (!device_is_ready(dev)) {
+	if (!device_is_ready(dev))
+	{
 		printk("\nError: Device \"%s\" is not ready; "
-		       "check the driver initialization logs for errors.\n",
-		       dev->name);
+			   "check the driver initialization logs for errors.\n",
+			   dev->name);
 		return NULL;
 	}
 
@@ -129,15 +164,16 @@ void main(void)
 {
 
 	int err;
- 	const struct device *dev = get_bme280_device();
+	const struct device *dev = get_bme280_device();
 
-	if (dev == NULL) {
+	if (dev == NULL)
+	{
 		return;
-	} 
-
+	}
 
 	err = bt_enable(NULL);
-	if (err) {
+	if (err)
+	{
 		printk("Bluetooth init failed (err %d)\n", err);
 		return;
 	}
@@ -145,7 +181,8 @@ void main(void)
 	printk("Bluetooth initialized\n");
 	bt_ready();
 
-	while (1) {
+	while (1)
+	{
 		struct sensor_value temp, press, humidity;
 
 		sensor_sample_fetch(dev);
@@ -154,8 +191,29 @@ void main(void)
 		sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY, &humidity);
 
 		printk("temp: %d.%06d; press: %d.%06d; humidity: %d.%06d\n",
-		      temp.val1, temp.val2, press.val1, press.val2,
-		      humidity.val1, humidity.val2);
+			   temp.val1, temp.val2, press.val1, press.val2,
+			   humidity.val1, humidity.val2);
+
+
+		//Put temp into the advertising data
+		adv_data[5] = ((temp.val1 >> 24) & 0xff);
+		adv_data[6] = ((temp.val1 >> 16) & 0xff);
+		adv_data[7] = ((temp.val1 >> 8) & 0xff);
+		adv_data[8] = ((temp.val1 >> 0) & 0xff);
+
+		adv_data[9] = ((temp.val2 >> 24) & 0xff);
+		adv_data[10] = ((temp.val2 >> 16) & 0xff);
+		adv_data[11] = ((temp.val2 >> 8) & 0xff);
+		adv_data[12] = ((temp.val2 >> 0) & 0xff);
+		ad_bme280[2].data = adv_data;
+
+		err = bt_le_adv_update_data(ad_bme280, ARRAY_SIZE(ad_bme280),
+									sd, ARRAY_SIZE(sd));
+		if (err)
+		{
+			printk("Adv. data update failed (err %d)\n", err);
+			return;
+		}
 
 		k_sleep(K_MSEC(1000));
 	}
