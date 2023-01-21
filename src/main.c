@@ -5,6 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+/* YS Notes */
+// BLE data is sent LSB first
+
+
 #include <zephyr.h>
 #include <device.h>
 #include <devicetree.h>
@@ -186,25 +191,35 @@ void main(void)
 		struct sensor_value temp, press, humidity;
 
 		sensor_sample_fetch(dev);
+/*
+			Representation of a sensor readout value per Zepgyr's sensor API.
+			 0.5: val1 =  0, val2 =  500000
+			-0.5: val1 =  0, val2 = -500000
+			-1.0: val1 = -1, val2 =  0
+			-1.5: val1 = -1, val2 = -500000
+*/
 		sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP, &temp);
 		sensor_channel_get(dev, SENSOR_CHAN_PRESS, &press);
 		sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY, &humidity);
 
+		//Print the temperature, pressure and humidity values on the console for debugging purposes
 		printk("temp: %d.%06d; press: %d.%06d; humidity: %d.%06d\n",
 			   temp.val1, temp.val2, press.val1, press.val2,
 			   humidity.val1, humidity.val2);
 
 
 		//Put temp into the advertising data
-		adv_data[5] = ((temp.val1 >> 24) & 0xff);
-		adv_data[6] = ((temp.val1 >> 16) & 0xff);
-		adv_data[7] = ((temp.val1 >> 8) & 0xff);
-		adv_data[8] = ((temp.val1 >> 0) & 0xff);
+		//The integer part of the temperature is stored in val1, and the decimal part is stored in val2
+		//Signle byte is enough to store the integer part of the temperature (-40 to 80), so we are discarding 3 MSB bytes from val1
+		adv_data[5] = ((temp.val1 >> 0) & 0xff);
+		//We normalize the decimal part of the temperature by dividing it by 10000, so that it can be stored in a single byte
+		adv_data[6] = ((temp.val2 / 10000) & 0xff);
 
-		adv_data[9] = ((temp.val2 >> 24) & 0xff);
-		adv_data[10] = ((temp.val2 >> 16) & 0xff);
-		adv_data[11] = ((temp.val2 >> 8) & 0xff);
-		adv_data[12] = ((temp.val2 >> 0) & 0xff);
+		//Put humidity into the advertising data, 
+		//we take just the the LSB byte, as the humidity can take take values only from 0 to 100
+		//We are discarding the humidity value after the decimal point, so humidity.val2 is not used
+		adv_data[7] = ((humidity.val1 >> 0) & 0xff);
+
 		ad_bme280[2].data = adv_data;
 
 		err = bt_le_adv_update_data(ad_bme280, ARRAY_SIZE(ad_bme280),
