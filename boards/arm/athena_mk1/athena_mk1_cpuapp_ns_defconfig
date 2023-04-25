@@ -1,9 +1,8 @@
-# Copyright (c) 2023 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
 CONFIG_SOC_SERIES_NRF53X=y
 CONFIG_SOC_NRF5340_CPUAPP_QKAA=y
-CONFIG_BOARD_ATHENA_MK1=y
+CONFIG_BOARD_ATHENA_MK1_CPUAPP_NS=y
 
 # Enable MPU
 CONFIG_ARM_MPU=y
@@ -14,11 +13,17 @@ CONFIG_HW_STACK_PROTECTION=y
 # Enable TrustZone-M
 CONFIG_ARM_TRUSTZONE_M=y
 
-# Enable SPI driver for nRF53 
-#TODO: check if this is needed and is correct!
-CONFIG_SPI=y
+# This Board implies building Non-Secure firmware
+CONFIG_TRUSTED_EXECUTION_NONSECURE=y
 
 # enable GPIO
 CONFIG_GPIO=y
+
+# Enable uart driver
+CONFIG_SERIAL=y
+
+# enable console
+CONFIG_CONSOLE=y
+CONFIG_UART_CONSOLE=y
 
 CONFIG_PINCTRL=y

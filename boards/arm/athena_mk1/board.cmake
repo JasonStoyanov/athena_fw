@@ -1,9 +1,20 @@
-# Copyright (c) 2023 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-board_runner_args(jlink "--device=nrf53" "--speed=4000")
-board_runner_args(pyocd "--target=nrf5340_cpuapp" "--frequency=4000000")
+if(CONFIG_BOARD_ATHENA_MK1_CPUAPP_NS)
+  set(TFM_PUBLIC_KEY_FORMAT "full")
+endif()
+
+if(CONFIG_BOARD_ATHENA_MK1_CPUAPP OR CONFIG_BOARD_ATHENA_MK1_CPUAPP_NS)
+board_runner_args(jlink "--device=nrf5340_xxaa_app" "--speed=4000")
+endif()
+
+if(CONFIG_TFM_FLASH_MERGED_BINARY)
+  set_property(TARGET runners_yaml_props_target PROPERTY hex_file "${CMAKE_BINARY_DIR}/tfm_merged.hex")
+endif()
+
+if(CONFIG_BOARD_ATHENA_MK1_CPUNET)
+board_runner_args(jlink "--device=nrf5340_xxaa_net" "--speed=4000")
+endif()
 
 include(${ZEPHYR_BASE}/boards/common/nrfjprog.board.cmake)
 include(${ZEPHYR_BASE}/boards/common/jlink.board.cmake)
-include(${ZEPHYR_BASE}/boards/common/pyocd.board.cmake)

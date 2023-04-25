@@ -1,4 +1,5 @@
 .vscode/
 build/
+athena_build/
 README.rst
 sample.yaml
