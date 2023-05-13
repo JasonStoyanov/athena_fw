@@ -21,6 +21,8 @@
 
 #include <zephyr/settings/settings.h>
 
+#include <zephyr/pm/pm.h>  
+
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
@@ -117,6 +119,8 @@ static void bt_ready()
 	size_t count = 1;
 	int err;
 
+
+	//TODO: we can reconfigure the BLE advertising interval here. See first parameter of bt_le_adv_start! 
 	/* Start advertising */
 	err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY, ad, ARRAY_SIZE(ad),
 						  sd, ARRAY_SIZE(sd));
