@@ -11,9 +11,11 @@ config SENSOR_LOG_LEVEL
 # the device connected either way. These defaults can be overridden if
 # needed.
 config SPI
-	default n
+	default y
 
 config I2C
-	default y
+	default n
+
+	
 
 source "Kconfig.zephyr"

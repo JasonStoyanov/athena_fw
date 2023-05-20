@@ -1,6 +1,21 @@
-# Copyright (c) 2023 Nordic Semiconductor ASA
+# Athena MK1 board configuration
+
+# Copyright (c) 2019-2020 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-config BOARD_ATHENA_MK1
-	bool "athena Mk1"
-	depends on SOC_NRF5340_CPUAPP_QKAA
+if SOC_NRF5340_CPUAPP_QKAA
+
+#config BOARD_NRF5340DK_NRF5340_CPUAPP
+config BOARD_ATHENA_MK1_CPUAPP
+	bool "Athena MK1 nRF5340 Application MCU"
+
+#config BOARD_NRF5340DK_NRF5340_CPUAPP_NS
+config BOARD_ATHENA_MK1_CPUAPP_NS
+	bool "Athena MK1 nRF5340 Application MCU non-secure"
+
+endif # SOC_NRF5340_CPUAPP_QKAA
+
+#config BOARD_NRF5340DK_NRF5340_CPUNET
+config BOARD_ATHENA_MK1_CPUNET
+	bool "Athena MK1 nRF5340 Network MCU"
+	depends on SOC_NRF5340_CPUNET_QKAA
