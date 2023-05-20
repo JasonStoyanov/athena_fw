@@ -244,7 +244,12 @@ void main(void)
 			return;
 		}
 
-		//TODO: Do we need measurement every second?
-		k_sleep(K_MSEC(1000));
+		//Note:
+		//We Take a measurement from the sensor every minute. The BLE stack will be active and adveritising every 1s (with the latest data), because as a beacon the perihperal device 
+		//should be able to see the advertising packets. If we advertise only once a minute, the central device will not be able to see the advertising packets. 
+		//So as a balanced approach we advertise every 1s, but take a measurement every minute. 
+		//TODO: put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
+
+		k_sleep(K_SECONDS(60));
 	}
 }
