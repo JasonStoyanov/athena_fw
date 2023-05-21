@@ -10,7 +10,7 @@
 // BLE data is sent LSB first
 
 
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
@@ -21,10 +21,14 @@
 
 #include <zephyr/settings/settings.h>
 
-#include <zephyr/pm/pm.h>  
+#include <zephyr/pm/pm.h> 
+#include <zephyr/pm/device.h> 
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
+
+/*Option 1: by node label*/
+#define SENSOR_SPI DT_NODELABEL(spi2)
 
 /** Non-connectable advertising with @ref BT_LE_ADV_OPT_USE_IDENTITY
  * and 1000ms interval. */
@@ -119,6 +123,10 @@ static const struct bt_data sd[] = {
 	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
 };
 
+
+
+const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
+
 static void bt_ready()
 {
 	char addr_s[BT_ADDR_LE_STR_LEN];
@@ -204,6 +212,8 @@ void main(void)
 	{
 		struct sensor_value temp, press, humidity;
 
+		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_RESUME);
+
 		sensor_sample_fetch(dev);
 /*
 			Representation of a sensor readout value per Zepgyr's sensor API.
@@ -249,7 +259,11 @@ void main(void)
 		//should be able to see the advertising packets. If we advertise only once a minute, the central device will not be able to see the advertising packets. 
 		//So as a balanced approach we advertise every 1s, but take a measurement every minute. 
 		//TODO: put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
-
+		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_SUSPEND);
 		k_sleep(K_SECONDS(60));
+		
+
+		//pm_device_state_set(spi_dev,PM_DEVICE_STATE_LOW_POWER,NULL,NULL);
+	//	pm_device_state_set();
 	}
 }
