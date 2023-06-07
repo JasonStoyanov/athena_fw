@@ -258,12 +258,10 @@ void main(void)
 		//We Take a measurement from the sensor every minute. The BLE stack will be active and adveritising every 1s (with the latest data), because as a beacon the perihperal device 
 		//should be able to see the advertising packets. If we advertise only once a minute, the central device will not be able to see the advertising packets. 
 		//So as a balanced approach we advertise every 1s, but take a measurement every minute. 
-		//TODO: put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
+		//Put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
 		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_SUSPEND);
 		k_sleep(K_SECONDS(60));
 		
 
-		//pm_device_state_set(spi_dev,PM_DEVICE_STATE_LOW_POWER,NULL,NULL);
-	//	pm_device_state_set();
 	}
 }

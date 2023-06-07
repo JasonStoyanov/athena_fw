@@ -22,7 +22,14 @@
 //         label = "BME280";
 //     };
 // };
+/ {
 
+    zephyr,user {
+     //  compatible = "nordic,nrf5340-dk-nrf5340-cpuapp";
+       io-channels = <&adc 0>;
+    };
+ };
+ 
 &spi2 {
 	status = "okay";
 	cs-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
