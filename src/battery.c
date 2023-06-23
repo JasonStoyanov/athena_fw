@@ -35,6 +35,50 @@ LOG_MODULE_REGISTER(BATTERY, CONFIG_ADC_LOG_LEVEL);
 #define BATTERY_ADC_GAIN ADC_GAIN_1_6
 #endif
 
+
+
+
+/** A discharge curve specific to the power source. */
+static const struct battery_level_point levels[] = {
+	/* "Curve" here eyeballed from captured data for the [Adafruit
+	 * 3.7v 2000 mAh](https://www.adafruit.com/product/2011) LIPO
+	 * under full load that started with a charge of 3.96 V and
+	 * dropped about linearly to 3.58 V over 15 hours.  It then
+	 * dropped rapidly to 3.10 V over one hour, at which point it
+	 * stopped transmitting.
+	 *
+	 * Based on eyeball comparisons we'll say that 15/16 of life
+	 * goes between 3.95 and 3.55 V, and 1/16 goes between 3.55 V
+	 * and 3.1 V.
+	 */
+
+	{ 10000, 3950 },
+	{ 625, 3550 },
+	{ 0, 3100 },
+};
+
+static const char *now_str(void)
+{
+	static char buf[16]; /* ...HH:MM:SS.MMM */
+	uint32_t now = k_uptime_get_32();
+	unsigned int ms = now % MSEC_PER_SEC;
+	unsigned int s;
+	unsigned int min;
+	unsigned int h;
+
+	now /= MSEC_PER_SEC;
+	s = now % 60U;
+	now /= 60U;
+	min = now % 60U;
+	now /= 60U;
+	h = now;
+
+	snprintf(buf, sizeof(buf), "%u:%02u:%02u.%03u",
+		 h, min, s, ms);
+	return buf;
+}
+
+
 struct io_channel_config {
 	uint8_t channel;
 };
@@ -229,3 +273,60 @@ unsigned int battery_level_pptt(unsigned int batt_mV,
 		  * (batt_mV - pb->lvl_mV)
 		  / (pa->lvl_mV - pb->lvl_mV));
 }
+
+
+//create a message queue to send battery level to main thread
+#define MSG_QUEUE_SIZE 10
+K_MSGQ_DEFINE(batt_lvl_msgq, sizeof(int), MSG_QUEUE_SIZE, 4);
+
+void battery_level_thread(int unused1, int unused2, int unused3)
+{
+
+	//TODO: should battery measurement initialization this be here or in the main thread?
+	int rc = battery_measure_enable(true);
+
+	if (rc != 0) {
+		printk("Failed initialize battery measurement: %d\n", rc);
+		return;
+	}
+    while (1) {
+		
+		int batt_mV = battery_sample();
+
+		if (batt_mV < 0) {
+			printk("Failed to read battery voltage: %d\n",
+			       batt_mV);
+			break; //FIXME: do not break, keep the task running?
+		}
+
+		/* send data to consumers */
+		
+        while (k_msgq_put(&batt_lvl_msgq, &batt_mV, K_NO_WAIT) != 0) {
+            /* message queue is full: purge old data & try again */
+            k_msgq_purge(&batt_lvl_msgq);
+        }
+
+		//Note:N Estimated battery life is not realiable, 
+		//sent mV to main thread and to BLE advertisement
+		unsigned int batt_pptt = battery_level_pptt(batt_mV, levels);
+
+		// printk("[%s]: %d mV; %u pptt\n", now_str(),
+		//        batt_mV, batt_pptt);
+		 printk("[%s]: %d mV;\n", now_str(),
+		        batt_mV);
+
+		k_sleep(K_SECONDS(5));
+    }
+
+    /* thread terminates at end of entry point function */
+}
+
+
+
+
+
+
+
+
+
+//If the battery level is below 20%, then send a message to the main thread to turn off the device

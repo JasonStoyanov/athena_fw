@@ -23,6 +23,7 @@
 
 #include <zephyr/pm/pm.h> 
 #include <zephyr/pm/device.h> 
+#include "battery.h"
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -124,6 +125,11 @@ static const struct bt_data sd[] = {
 };
 
 
+ 	#define STACKSIZE 500
+ 	#define PRIORITY 5
+	// K_THREAD_STACK_DEFINE(my_stack_area, STACKSIZE);
+    // struct k_thread my_thread_data;
+
 
 const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
 
@@ -187,26 +193,35 @@ static const struct device *get_bme280_device(void)
 	return dev;
 }
 
+
+//Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.
 void main(void)
 {
 
+	//BME280 sensor
 	int err;
 	const struct device *dev = get_bme280_device();
-
 	if (dev == NULL)
 	{
 		return;
 	}
-
+	//Bluetooth
 	err = bt_enable(NULL);
 	if (err)
 	{
 		printk("Bluetooth init failed (err %d)\n", err);
 		return;
 	}
-
 	printk("Bluetooth initialized\n");
 	bt_ready();
+
+	//Initialize the battery measurement
+	//TODO: maybe this should be in the battery_level_thread
+	int rc = battery_measure_enable(true);
+	if (rc != 0) {
+		printk("Failed initialize battery measurement: %d\n", rc);
+	//	return;
+	}
 
 	while (1)
 	{
@@ -231,7 +246,16 @@ void main(void)
 			   temp.val1, temp.val2, press.val1, press.val2,
 			   humidity.val1, humidity.val2);
 
-
+		int bat_lvl;
+		int stat;
+		extern struct k_msgq batt_lvl_msgq; 
+		/*Check if we have new battery level data*/
+        stat = k_msgq_get(&batt_lvl_msgq, &bat_lvl, K_NO_WAIT);
+		//Only we have new battery level data, we update the advertising data 
+		if (stat == 0) {
+			printk("Battery level: %d\n", bat_lvl);
+			//TODO: update the advertising data
+		}
 		//Put temp into the advertising data
 		//The integer part of the temperature is stored in val1, and the decimal part is stored in val2
 		//Signle byte is enough to store the integer part of the temperature (-40 to 80), so we are discarding 3 MSB bytes from val1
@@ -261,7 +285,12 @@ void main(void)
 		//Put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
 		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_SUSPEND);
 		k_sleep(K_SECONDS(60));
+	
 		
 
 	}
 }
+
+//Static thread for measuring the battery level
+K_THREAD_DEFINE(batt_level_id, STACKSIZE, battery_level_thread, NULL, NULL, NULL,
+		PRIORITY, 0, 0);

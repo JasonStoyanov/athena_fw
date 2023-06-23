@@ -50,4 +50,8 @@ struct battery_level_point {
 unsigned int battery_level_pptt(unsigned int batt_mV,
 				const struct battery_level_point *curve);
 
+
+
+void battery_level_thread(int unused1, int unused2, int unused3);				
+
 #endif /* APPLICATION_BATTERY_H_ */
