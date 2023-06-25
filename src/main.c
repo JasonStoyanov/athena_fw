@@ -246,15 +246,26 @@ void main(void)
 			   temp.val1, temp.val2, press.val1, press.val2,
 			   humidity.val1, humidity.val2);
 
+
+		//TODO: move the variable declarations to the top of the file
 		int bat_lvl;
+		uint8_t bat_lvl_low;
 		int stat;
 		extern struct k_msgq batt_lvl_msgq; 
+		#define BAT_LVL_THRESHOLD_MV 2000
 		/*Check if we have new battery level data*/
         stat = k_msgq_get(&batt_lvl_msgq, &bat_lvl, K_NO_WAIT);
 		//Only we have new battery level data, we update the advertising data 
 		if (stat == 0) {
+			if (bat_lvl < BAT_LVL_THRESHOLD_MV) {
+				bat_lvl_low = 1;
+			}
+			else {
+				bat_lvl_low = 0;
+			}
 			printk("Battery level: %d\n", bat_lvl);
-			//TODO: update the advertising data
+			//Update the advertising data
+			adv_data[8] = bat_lvl_low;
 		}
 		//Put temp into the advertising data
 		//The integer part of the temperature is stored in val1, and the decimal part is stored in val2
