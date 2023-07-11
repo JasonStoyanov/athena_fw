@@ -16,14 +16,22 @@
 #include <zephyr/drivers/sensor.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/gatt.h>
+
+
+#include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
 
 #include <zephyr/settings/settings.h>
 
 #include <zephyr/pm/pm.h> 
 #include <zephyr/pm/device.h> 
 #include "battery.h"
+
+#define MCUBOOT_DBG  1
+#define DISABLE_BME280_READ 0
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -119,19 +127,60 @@ static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
 							 BT_UUID_16_ENCODE(0x1122), BT_UUID_16_ENCODE(0x3344), BT_UUID_16_ENCODE(0x5566), BT_UUID_16_ENCODE(0x7788), 0x08, 0x09, /* 10-byte Namespace */
 							 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
+
+
+//TODO: replace scan response data with SMP service UUID
 /* Set Scan Response data */
+// static const struct bt_data sd[] = {
+// 	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+// };
+
+
+
+//SMP service UUID and Device name
+//Note: Scan data is limited to 31 bytes, so the SMP service UUID and device name should not exceed 31 bytes
 static const struct bt_data sd[] = {
+	BT_DATA_BYTES(BT_DATA_UUID128_ALL,
+		      0x84, 0xaa, 0x60, 0x74, 0x52, 0x8a, 0x8b, 0x86,
+		      0xd3, 0x4c, 0xb7, 0x1d, 0x1d, 0xdc, 0x53, 0x8d),
 	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
 };
 
 
- 	#define STACKSIZE 500
- 	#define PRIORITY 5
+#define STACKSIZE 500
+#define PRIORITY 5
 	// K_THREAD_STACK_DEFINE(my_stack_area, STACKSIZE);
     // struct k_thread my_thread_data;
 
 
 const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
+
+
+#if (MCUBOOT_DBG == 1)
+static void connected(struct bt_conn *conn, uint8_t err)
+{
+	if (err) {
+		printk("Connection failed (err %u)\n", err);
+		return;
+	}
+
+	printk("Connected\n");
+
+	//dk_set_led_on(CON_STATUS_LED);
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	printk("Disconnected (reason %u)\n", reason);
+
+	//dk_set_led_off(CON_STATUS_LED);
+}
+
+BT_CONN_CB_DEFINE(conn_callbacks) = {
+	.connected        = connected,
+	.disconnected     = disconnected,
+};
+#endif
 
 static void bt_ready()
 {
@@ -146,8 +195,11 @@ static void bt_ready()
 	// err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY, ad, ARRAY_SIZE(ad),
 	// 					  sd, ARRAY_SIZE(sd));
 	//NOTE: we can reconfigure the BLE advertising interval here. See first parameter of bt_le_adv_start
-	err = bt_le_adv_start(BT_LE_ADV_NCONN_SLOW_ADV, ad, ARRAY_SIZE(ad),
-	 					  sd, ARRAY_SIZE(sd));
+	// err = bt_le_adv_start(BT_LE_ADV_NCONN_SLOW_ADV, ad, ARRAY_SIZE(ad),
+	//  					  sd, ARRAY_SIZE(sd));
+	//Start connectable advertising
+    err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad),
+	  					  sd, ARRAY_SIZE(sd));
 	if (err)
 	{
 		printk("Advertising failed to start (err %d)\n", err);
@@ -200,11 +252,18 @@ void main(void)
 
 	//BME280 sensor
 	int err;
+	#if (DISABLE_BME280_READ == 0)
 	const struct device *dev = get_bme280_device();
 	if (dev == NULL)
 	{
 		return;
 	}
+	#endif
+	#if (MCUBOOT_DBG == 1)
+	printk("build time: " __DATE__ " " __TIME__ "\n");
+    smp_bt_register();
+	#endif
+
 	//Bluetooth
 	err = bt_enable(NULL);
 	if (err)
@@ -229,6 +288,7 @@ void main(void)
 
 		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_RESUME);
 
+#if (DISABLE_BME280_READ == 0)
 		sensor_sample_fetch(dev);
 /*
 			Representation of a sensor readout value per Zepgyr's sensor API.
@@ -240,7 +300,7 @@ void main(void)
 		sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP, &temp);
 		sensor_channel_get(dev, SENSOR_CHAN_PRESS, &press);
 		sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY, &humidity);
-
+#endif
 		//Print the temperature, pressure and humidity values on the console for debugging purposes
 		printk("temp: %d.%06d; press: %d.%06d; humidity: %d.%06d\n",
 			   temp.val1, temp.val2, press.val1, press.val2,

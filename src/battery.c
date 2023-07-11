@@ -315,7 +315,7 @@ void battery_level_thread(int unused1, int unused2, int unused3)
 		 printk("[%s]: %d mV;\n", now_str(),
 		        batt_mV);
 
-		k_sleep(K_SECONDS(5));
+		k_sleep(K_SECONDS(5)); //FIXME: increase sleep to 5 minutes or more, no need to sample so often?
     }
 
     /* thread terminates at end of entry point function */
