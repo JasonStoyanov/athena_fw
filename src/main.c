@@ -135,8 +135,6 @@ static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
 // 	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
 // };
 
-
-
 //SMP service UUID and Device name
 //Note: Scan data is limited to 31 bytes, so the SMP service UUID and device name should not exceed 31 bytes
 static const struct bt_data sd[] = {
@@ -154,6 +152,20 @@ static const struct bt_data sd[] = {
 
 
 const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
+
+static uint8_t app_stat_reg;
+
+
+#define APP_VER 0x02
+
+//App Status register bits
+#define BME280_INIT_ERR 0x01
+#define BATT_LOW     	0x02
+#define BATT_INIT_ERR 	0x04
+
+#define SET_FLAG(reg, flag) (reg |= (flag))
+#define CLEAR_FLAG(reg, flag) (reg &= ~(flag))
+#define CHECK_FLAG(reg, flag) (reg & (flag))
 
 
 #if (MCUBOOT_DBG == 1)
@@ -256,7 +268,8 @@ void main(void)
 	const struct device *dev = get_bme280_device();
 	if (dev == NULL)
 	{
-		return;
+		SET_FLAG(app_stat_reg, BME280_INIT_ERR);
+	//	return;
 	}
 	#endif
 	#if (MCUBOOT_DBG == 1)
@@ -269,7 +282,7 @@ void main(void)
 	if (err)
 	{
 		printk("Bluetooth init failed (err %d)\n", err);
-		return;
+		return; //FIXME: Remove return and indicate to outside world that the app has failed to initialize BLE (e.g. LED blink pattern)
 	}
 	printk("Bluetooth initialized\n");
 	bt_ready();
@@ -279,7 +292,7 @@ void main(void)
 	int rc = battery_measure_enable(true);
 	if (rc != 0) {
 		printk("Failed initialize battery measurement: %d\n", rc);
-	//	return;
+		SET_FLAG(app_stat_reg, BATT_INIT_ERR);
 	}
 
 	while (1)
@@ -290,13 +303,13 @@ void main(void)
 
 #if (DISABLE_BME280_READ == 0)
 		sensor_sample_fetch(dev);
-/*
-			Representation of a sensor readout value per Zepgyr's sensor API.
-			 0.5: val1 =  0, val2 =  500000
-			-0.5: val1 =  0, val2 = -500000
-			-1.0: val1 = -1, val2 =  0
-			-1.5: val1 = -1, val2 = -500000
-*/
+		/*
+		*	Representation of a sensor readout value per Zepgyr's sensor API.
+		*	 0.5: val1 =  0, val2 =  500000
+		*	-0.5: val1 =  0, val2 = -500000
+		*	-1.0: val1 = -1, val2 =  0
+		*	-1.5: val1 = -1, val2 = -500000
+		*/
 		sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP, &temp);
 		sensor_channel_get(dev, SENSOR_CHAN_PRESS, &press);
 		sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY, &humidity);
@@ -309,7 +322,7 @@ void main(void)
 
 		//TODO: move the variable declarations to the top of the file
 		int bat_lvl;
-		uint8_t bat_lvl_low;
+		//uint8_t bat_lvl_low;
 		int stat;
 		extern struct k_msgq batt_lvl_msgq; 
 		#define BAT_LVL_THRESHOLD_MV 2000
@@ -318,15 +331,20 @@ void main(void)
 		//Only we have new battery level data, we update the advertising data 
 		if (stat == 0) {
 			if (bat_lvl < BAT_LVL_THRESHOLD_MV) {
-				bat_lvl_low = 1;
+				//bat_lvl_low = 1;
+				SET_FLAG(app_stat_reg, BATT_LOW);
 			}
 			else {
-				bat_lvl_low = 0;
+				//bat_lvl_low = 0;
+				CLEAR_FLAG(app_stat_reg, BATT_LOW);
 			}
 			printk("Battery level: %d\n", bat_lvl);
 			//Update the advertising data
-			adv_data[8] = bat_lvl_low;
+			
 		}
+		adv_data[9] = APP_VER;
+		//Update the advertising data
+		adv_data[8] = app_stat_reg; 
 		//Put temp into the advertising data
 		//The integer part of the temperature is stored in val1, and the decimal part is stored in val2
 		//Signle byte is enough to store the integer part of the temperature (-40 to 80), so we are discarding 3 MSB bytes from val1
@@ -346,7 +364,7 @@ void main(void)
 		if (err)
 		{
 			printk("Adv. data update failed (err %d)\n", err);
-			return;
+			return; //FIXME:
 		}
 
 		//Note:
@@ -357,8 +375,6 @@ void main(void)
 		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_SUSPEND);
 		k_sleep(K_SECONDS(60));
 	
-		
-
 	}
 }
 

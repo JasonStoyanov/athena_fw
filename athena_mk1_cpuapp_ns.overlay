@@ -67,7 +67,7 @@
 
 //Use the pins assigned to UART1 as we will use the ones assigned to UART0 for SPI
 &uart0 {
-	status = "okay";
+	status = "disabled";
 	current-speed = <115200>;
 	pinctrl-0 = <&uart1_default>;
 	pinctrl-1 = <&uart1_sleep>;
