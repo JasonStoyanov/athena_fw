@@ -1,5 +1,6 @@
 .vscode/
 build/
 athena_build/
+athena_build_no_tfm/
 README.rst
 sample.yaml

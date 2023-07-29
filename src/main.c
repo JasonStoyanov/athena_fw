@@ -28,6 +28,9 @@
 
 #include <zephyr/pm/pm.h> 
 #include <zephyr/pm/device.h> 
+
+#include <zephyr/drivers/gpio.h>
+
 #include "battery.h"
 
 #define MCUBOOT_DBG  1
@@ -156,7 +159,7 @@ const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
 static uint8_t app_stat_reg;
 
 
-#define APP_VER 0x02
+#define APP_VER 0x03
 
 //App Status register bits
 #define BME280_INIT_ERR 0x01
@@ -210,6 +213,7 @@ static void bt_ready()
 	// err = bt_le_adv_start(BT_LE_ADV_NCONN_SLOW_ADV, ad, ARRAY_SIZE(ad),
 	//  					  sd, ARRAY_SIZE(sd));
 	//Start connectable advertising
+	//FIXME: this new connectable advertising should also be configured to 1s interval, as the non-connectable advertising above!
     err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad),
 	  					  sd, ARRAY_SIZE(sd));
 	if (err)
@@ -258,13 +262,59 @@ static const struct device *get_bme280_device(void)
 }
 
 
+#define LED_TEST_EN 1
+#if (LED_TEST_EN == 1)
+/* 1000 msec = 1 sec */
+#define SLEEP_TIME_MS   1000
+/* The devicetree node identifier for the "led0" alias. */
+#define LED0_NODE DT_ALIAS(led4)
+#define BUTTON_NODE DT_ALIAS(sw4)
+
+/*
+ * A build error on this line means your board is unsupported.
+ * See the sample documentation for information on how to fix this.
+ */
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(BUTTON_NODE, gpios);
+#endif
+
 //Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.
 void main(void)
 {
 
+
+ #if (LED_TEST_EN == 1)
+   int ret;
+
+	if (!gpio_is_ready_dt(&led)) {
+		return 0;
+	}
+	if (!gpio_is_ready_dt(&button)) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_HIGH);
+	if (ret < 0) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&button, GPIO_INPUT | GPIO_PULL_UP);
+	if (ret < 0) {
+		return 0;
+	}
+	// while (1) {
+	// 	ret = gpio_pin_toggle_dt(&led);
+	// 	if (ret < 0) {
+	// 		return 0;
+	// 	}
+	// 	k_msleep(SLEEP_TIME_MS);
+	// }
+ #endif
+  #define DO_NOTHING 0
+  #if (DO_NOTHING == 0)
 	//BME280 sensor
 	int err;
-	#if (DISABLE_BME280_READ == 0)
+	#if (CONFIG_BME280 == 1)
 	const struct device *dev = get_bme280_device();
 	if (dev == NULL)
 	{
@@ -301,7 +351,10 @@ void main(void)
 
 		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_RESUME);
 
-#if (DISABLE_BME280_READ == 0)
+
+
+#if (CONFIG_BME280 == 1)
+//#if (DISABLE_BME280_READ == 0)
 		sensor_sample_fetch(dev);
 		/*
 		*	Representation of a sensor readout value per Zepgyr's sensor API.
@@ -313,6 +366,7 @@ void main(void)
 		sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP, &temp);
 		sensor_channel_get(dev, SENSOR_CHAN_PRESS, &press);
 		sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY, &humidity);
+//#endif
 #endif
 		//Print the temperature, pressure and humidity values on the console for debugging purposes
 		printk("temp: %d.%06d; press: %d.%06d; humidity: %d.%06d\n",
@@ -373,9 +427,12 @@ void main(void)
 		//So as a balanced approach we advertise every 1s, but take a measurement every minute. 
 		//Put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
 		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_SUSPEND);
+
+	
 		k_sleep(K_SECONDS(60));
 	
 	}
+#endif
 }
 
 //Static thread for measuring the battery level
