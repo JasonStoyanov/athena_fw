@@ -97,8 +97,8 @@ config BT_CTLR
 
 endif # BOARD_ATHENA_MK1_CPUNET
 
-config UART_NRF_DK_SERIAL_WORKAROUND
-	default y if ZTEST
+#config UART_NRF_DK_SERIAL_WORKAROUND
+#	default y if ZTEST
 
 # When the nRF DK serial workaround is enabled, increase the stack size in
 # tests built with no optimizations, as the standard size may be insufficient

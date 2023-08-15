@@ -23,6 +23,14 @@
 //     };
 // };
 
+/ {
+
+    zephyr,user {
+     //  compatible = "nordic,nrf5340-dk-nrf5340-cpuapp";
+       io-channels = <&adc 0>;
+    };
+ };
+
 &spi2 {
 	status = "okay";
 	cs-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
@@ -60,7 +68,7 @@
 
 //Use the pins assigned to UART1 as we will use the ones assigned to UART0 for SPI
 &uart0 {
-	status = "okay";
+	status = "disabled";
 	current-speed = <115200>;
 	pinctrl-0 = <&uart1_default>;
 	pinctrl-1 = <&uart1_sleep>;

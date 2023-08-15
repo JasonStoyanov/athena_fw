@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 config LOG
-	default y
+	default n
 
 config SENSOR_LOG_LEVEL
 	default 4
