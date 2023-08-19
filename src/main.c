@@ -1,11 +1,3 @@
-/*
- * Copyright (c) 2012-2014 Wind River Systems, Inc.
- * Copyright (c) 2021 Nordic Semiconductor ASA
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
-
 /* YS Notes */
 // BLE data is sent LSB first
 
@@ -21,7 +13,6 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
 
-
 #include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
 
 #include <zephyr/settings/settings.h>
@@ -32,85 +23,39 @@
 #include <zephyr/drivers/gpio.h>
 
 #include "battery.h"
+#include "ble_beacon.h"
 
-#define MCUBOOT_DBG  1
-#define DISABLE_BME280_READ 0
 
-#define DEVICE_NAME CONFIG_BT_DEVICE_NAME
-#define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
+#define BAT_LVL_THRESHOLD_MV 2000
 
-/*Option 1: by node label*/
+/*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
+#define LED_NODE DT_ALIAS(led4)
+#define BUTTON_NODE DT_ALIAS(sw4)
 
-/** Non-connectable advertising with @ref BT_LE_ADV_OPT_USE_IDENTITY
- * and 1000ms interval. */
-#define BT_LE_ADV_NCONN_SLOW_ADV BT_LE_ADV_PARAM(BT_LE_ADV_OPT_USE_IDENTITY, \
-						 BT_GAP_ADV_SLOW_INT_MIN, \
-						 BT_GAP_ADV_SLOW_INT_MAX, \
-						 NULL)
+#define STACKSIZE 500
+#define PRIORITY 5
 
-/*  Select the type of Eddystone frame type
-   0 - URL frame type
-   1 - UID frame type
-   2 - DBG frame
-   */
-#define EDDYSTONE_FRAME_TYPE 2
+#define APP_VER 0x03
+//App Status register bits
+#define BME280_INIT_ERR 0x01
+#define BATT_LOW     	0x02
+#define BATT_INIT_ERR 	0x04
+//Flag manipulation macros
+#define SET_FLAG(reg, flag) (reg |= (flag))
+#define CLEAR_FLAG(reg, flag) (reg &= ~(flag))
+#define CHECK_FLAG(reg, flag) (reg & (flag))
 
-#if (EDDYSTONE_FRAME_TYPE == 0)
-/*
- * Set Advertisement data. Based on the Eddystone specification:
- * https://github.com/google/eddystone/blob/master/protocol-specification.md
- * https://github.com/google/eddystone/tree/master/eddystone-url
- */
-static const struct bt_data ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
-	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
-	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
-				  0xaa, 0xfe, /* Eddystone UUID */
-				  0x10,		  /* Eddystone-URL frame type */
-				  0x00,		  /* Calibrated Tx power at 0m */
-				  0x00,		  /* URL Scheme Prefix http://www. */
-				  'o', 'p', 'e', 'n', '4', 't',
-				  'e', 'c', 'h',
-				  0x07) /* .com */
-};
-#elif (EDDYSTONE_FRAME_TYPE == 1)
 
-/*
- * Set Advertisement data. Based on the Eddystone specification:
- * https://github.com/google/eddystone/blob/master/protocol-specification.md
- * https://github.com/google/eddystone/tree/master/eddystone-url
- */
-static const struct bt_data ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
-	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
-	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
-				  0xaa, 0xfe,												  /* Eddystone UUID */
-				  0x00,														  /* Eddystone-UID frame type */
-				  0x00,														  /* Calibrated Tx power at 0m */
-				  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, /* 10-byte Namespace */
-				  0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f)						  /* 6-byte Instance */
-};
 
-#elif (EDDYSTONE_FRAME_TYPE == 2)
-
-/*
- * Set Advertisement data. Based on the Eddystone specification:
- * https://github.com/google/eddystone/blob/master/protocol-specification.md
- * https://github.com/google/eddystone/tree/master/eddystone-url
- */
-static const struct bt_data ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
-	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
-	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
-				  0xaa, 0xfe,																											  /* Eddystone UUID */
-				  0x00,																													  /* Eddystone-UID frame type */
-				  0x00,																													  /* Calibrated Tx power at 0m */
-				  BT_UUID_16_ENCODE(0x1122), BT_UUID_16_ENCODE(0x3344), BT_UUID_16_ENCODE(0x5566), BT_UUID_16_ENCODE(0x7788), 0x08, 0x09, /* 10-byte Namespace */
-				  0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f)																					  /* 6-byte Instance */
-};
-
+#define LED_TEST_EN 0
+#if (LED_TEST_EN == 1)
+/* 1000 msec = 1 sec */
+#define LED_TOGGLE_INTERVAL_MS   1000
 #endif
+
+
+static uint8_t app_stat_reg;
 
 static struct bt_data ad_bme280[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
@@ -131,108 +76,15 @@ static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
 							 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 
-
-//TODO: replace scan response data with SMP service UUID
-/* Set Scan Response data */
-// static const struct bt_data sd[] = {
-// 	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
-// };
-
-//SMP service UUID and Device name
-//Note: Scan data is limited to 31 bytes, so the SMP service UUID and device name should not exceed 31 bytes
-static const struct bt_data sd[] = {
-	BT_DATA_BYTES(BT_DATA_UUID128_ALL,
-		      0x84, 0xaa, 0x60, 0x74, 0x52, 0x8a, 0x8b, 0x86,
-		      0xd3, 0x4c, 0xb7, 0x1d, 0x1d, 0xdc, 0x53, 0x8d),
-	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
-};
-
-
-#define STACKSIZE 500
-#define PRIORITY 5
-	// K_THREAD_STACK_DEFINE(my_stack_area, STACKSIZE);
-    // struct k_thread my_thread_data;
-
-
+/*
+ * A build error on this line means your board is unsupported.
+ * See the sample documentation for information on how to fix this.
+ */
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
+static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(BUTTON_NODE, gpios);
 const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
 
-static uint8_t app_stat_reg;
-
-
-#define APP_VER 0x03
-
-//App Status register bits
-#define BME280_INIT_ERR 0x01
-#define BATT_LOW     	0x02
-#define BATT_INIT_ERR 	0x04
-
-#define SET_FLAG(reg, flag) (reg |= (flag))
-#define CLEAR_FLAG(reg, flag) (reg &= ~(flag))
-#define CHECK_FLAG(reg, flag) (reg & (flag))
-
-
-#if (MCUBOOT_DBG == 1)
-static void connected(struct bt_conn *conn, uint8_t err)
-{
-	if (err) {
-		printk("Connection failed (err %u)\n", err);
-		return;
-	}
-
-	printk("Connected\n");
-
-	//dk_set_led_on(CON_STATUS_LED);
-}
-
-static void disconnected(struct bt_conn *conn, uint8_t reason)
-{
-	printk("Disconnected (reason %u)\n", reason);
-
-	//dk_set_led_off(CON_STATUS_LED);
-}
-
-BT_CONN_CB_DEFINE(conn_callbacks) = {
-	.connected        = connected,
-	.disconnected     = disconnected,
-};
-#endif
-
-static void bt_ready()
-{
-	char addr_s[BT_ADDR_LE_STR_LEN];
-	bt_addr_le_t addr = {0};
-	size_t count = 1;
-	int err;
-
-
-	
-	/* Start advertising */
-	// err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY, ad, ARRAY_SIZE(ad),
-	// 					  sd, ARRAY_SIZE(sd));
-	//NOTE: we can reconfigure the BLE advertising interval here. See first parameter of bt_le_adv_start
-	// err = bt_le_adv_start(BT_LE_ADV_NCONN_SLOW_ADV, ad, ARRAY_SIZE(ad),
-	//  					  sd, ARRAY_SIZE(sd));
-	//Start connectable advertising
-	//FIXME: this new connectable advertising should also be configured to 1s interval, as the non-connectable advertising above!
-    err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad),
-	  					  sd, ARRAY_SIZE(sd));
-	if (err)
-	{
-		printk("Advertising failed to start (err %d)\n", err);
-		return;
-	}
-
-	/* For connectable advertising you would use
-	 * bt_le_oob_get_local().  For non-connectable non-identity
-	 * advertising an non-resolvable private address is used;
-	 * there is no API to retrieve that.
-	 */
-
-	bt_id_get(&addr, &count);
-	bt_addr_le_to_str(&addr, addr_s, sizeof(addr_s));
-
-	printk("Beacon started, advertising as %s\n", addr_s);
-}
+extern const struct bt_data sd[2];
 
 /*
  * Get a device structure from a devicetree node with compatible
@@ -262,29 +114,14 @@ static const struct device *get_bme280_device(void)
 }
 
 
-#define LED_TEST_EN 1
-#if (LED_TEST_EN == 1)
-/* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS   1000
-/* The devicetree node identifier for the "led0" alias. */
-#define LED0_NODE DT_ALIAS(led4)
-#define BUTTON_NODE DT_ALIAS(sw4)
-
-/*
- * A build error on this line means your board is unsupported.
- * See the sample documentation for information on how to fix this.
- */
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(BUTTON_NODE, gpios);
-#endif
-
 //Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.
 void main(void)
 {
 
-
- #if (LED_TEST_EN == 1)
-   int ret;
+	int bat_lvl;
+	int stat;
+	extern struct k_msgq batt_lvl_msgq; 
+    int ret;
 
 	if (!gpio_is_ready_dt(&led)) {
 		return 0;
@@ -302,13 +139,14 @@ void main(void)
 	if (ret < 0) {
 		return 0;
 	}
-	// while (1) {
-	// 	ret = gpio_pin_toggle_dt(&led);
-	// 	if (ret < 0) {
-	// 		return 0;
-	// 	}
-	// 	k_msleep(SLEEP_TIME_MS);
-	// }
+ #if (LED_TEST_EN == 1)	
+	while (1) {
+		ret = gpio_pin_toggle_dt(&led);
+		if (ret < 0) {
+			return 0;
+		}
+		k_msleep(LED_TOGGLE_INTERVAL_MS);
+	}
  #endif
   #define DO_NOTHING 0
   #if (DO_NOTHING == 0)
@@ -351,10 +189,7 @@ void main(void)
 
 		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_RESUME);
 
-
-
 #if (CONFIG_BME280 == 1)
-//#if (DISABLE_BME280_READ == 0)
 		sensor_sample_fetch(dev);
 		/*
 		*	Representation of a sensor readout value per Zepgyr's sensor API.
@@ -366,53 +201,45 @@ void main(void)
 		sensor_channel_get(dev, SENSOR_CHAN_AMBIENT_TEMP, &temp);
 		sensor_channel_get(dev, SENSOR_CHAN_PRESS, &press);
 		sensor_channel_get(dev, SENSOR_CHAN_HUMIDITY, &humidity);
-//#endif
-#endif
-		//Print the temperature, pressure and humidity values on the console for debugging purposes
+
+				//Print the temperature, pressure and humidity values on the console for debugging purposes
 		printk("temp: %d.%06d; press: %d.%06d; humidity: %d.%06d\n",
 			   temp.val1, temp.val2, press.val1, press.val2,
 			   humidity.val1, humidity.val2);
+#endif
 
-
-		//TODO: move the variable declarations to the top of the file
-		int bat_lvl;
-		//uint8_t bat_lvl_low;
-		int stat;
-		extern struct k_msgq batt_lvl_msgq; 
-		#define BAT_LVL_THRESHOLD_MV 2000
 		/*Check if we have new battery level data*/
         stat = k_msgq_get(&batt_lvl_msgq, &bat_lvl, K_NO_WAIT);
-		//Only we have new battery level data, we update the advertising data 
 		if (stat == 0) {
 			if (bat_lvl < BAT_LVL_THRESHOLD_MV) {
-				//bat_lvl_low = 1;
 				SET_FLAG(app_stat_reg, BATT_LOW);
 			}
 			else {
-				//bat_lvl_low = 0;
 				CLEAR_FLAG(app_stat_reg, BATT_LOW);
 			}
-			printk("Battery level: %d\n", bat_lvl);
-			//Update the advertising data
-			
+			printk("Battery level: %d\n", bat_lvl);			
 		}
-		adv_data[9] = APP_VER;
-		//Update the advertising data
-		adv_data[8] = app_stat_reg; 
-		//Put temp into the advertising data
-		//The integer part of the temperature is stored in val1, and the decimal part is stored in val2
-		//Signle byte is enough to store the integer part of the temperature (-40 to 80), so we are discarding 3 MSB bytes from val1
+
+		/*Update the advertising data*/
+		/*
+		 * Temperature handling
+		 * The integer part of the temperature is stored in temp.val1, and the decimal part is stored in temp.val2
+		 * Signle byte is enough to store the integer part of the temperature (-40 to 80), so we are discarding 3 MSB bytes from val1
+		 * We normalize the decimal part of the temperature (temp.val2) by dividing it by 10000, so that it can be stored in a single byte
+		 * 
+		 * Humidity handling
+		 * We take just the the LSB byte, as the humidity can take take values only from 0 to 100
+		 * We are discarding the humidity value after the decimal point, so humidity.val2 is not used
+		 */
 		adv_data[5] = ((temp.val1 >> 0) & 0xff);
-		//We normalize the decimal part of the temperature by dividing it by 10000, so that it can be stored in a single byte
 		adv_data[6] = ((temp.val2 / 10000) & 0xff);
-
-		//Put humidity into the advertising data, 
-		//we take just the the LSB byte, as the humidity can take take values only from 0 to 100
-		//We are discarding the humidity value after the decimal point, so humidity.val2 is not used
 		adv_data[7] = ((humidity.val1 >> 0) & 0xff);
-
+		adv_data[9] = APP_VER;
+		adv_data[8] = app_stat_reg; 
+		//
 		ad_bme280[2].data = adv_data;
 
+		//FIXME: maybe move this to the ble_beacon file, for consistency sake :)
 		err = bt_le_adv_update_data(ad_bme280, ARRAY_SIZE(ad_bme280),
 									sd, ARRAY_SIZE(sd));
 		if (err)
@@ -420,17 +247,15 @@ void main(void)
 			printk("Adv. data update failed (err %d)\n", err);
 			return; //FIXME:
 		}
-
-		//Note:
-		//We Take a measurement from the sensor every minute. The BLE stack will be active and adveritising every 1s (with the latest data), because as a beacon the perihperal device 
-		//should be able to see the advertising packets. If we advertise only once a minute, the central device will not be able to see the advertising packets. 
-		//So as a balanced approach we advertise every 1s, but take a measurement every minute. 
-		//Put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
-		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_SUSPEND);
-
-	
-		k_sleep(K_SECONDS(60));
-	
+		/*
+		* Note:
+		* We Take a measurement from the sensor every minute. The BLE stack will be active and adveritising every 1s (with the latest data), because as a beacon the perihperal device 
+		* should be able to see the advertising packets. If we advertise only once a minute, the central device will not be able to see the advertising packets. 
+		* So as a balanced approach we advertise every 1s, but take a measurement every minute. 
+		* Put the SPI device in low power mode here, and wake-it up before calling sensor_sample_fetch(dev);
+		*/
+		pm_device_action_run( spi_dev, PM_DEVICE_ACTION_SUSPEND);	
+		k_sleep(K_SECONDS(60));	
 	}
 #endif
 }
