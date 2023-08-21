@@ -26,15 +26,15 @@
 #include "ble_beacon.h"
 
 
+#define STACKSIZE 500
+#define PRIORITY 5
+
 #define BAT_LVL_THRESHOLD_MV 2000
 
 /*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
 #define LED_NODE DT_ALIAS(led4)
 #define BUTTON_NODE DT_ALIAS(sw4)
-
-#define STACKSIZE 500
-#define PRIORITY 5
 
 #define APP_VER 0x03
 //App Status register bits
@@ -45,8 +45,6 @@
 #define SET_FLAG(reg, flag) (reg |= (flag))
 #define CLEAR_FLAG(reg, flag) (reg &= ~(flag))
 #define CHECK_FLAG(reg, flag) (reg & (flag))
-
-
 
 #define LED_TEST_EN 0
 #if (LED_TEST_EN == 1)
@@ -160,20 +158,21 @@ void main(void)
 	//	return;
 	}
 	#endif
-	#if (MCUBOOT_DBG == 1)
-	printk("build time: " __DATE__ " " __TIME__ "\n");
-    smp_bt_register();
-	#endif
+	// #if (MCUBOOT_DBG == 1)
+	// printk("build time: " __DATE__ " " __TIME__ "\n");
+    // smp_bt_register();
+	// #endif
 
-	//Bluetooth
-	err = bt_enable(NULL);
-	if (err)
-	{
-		printk("Bluetooth init failed (err %d)\n", err);
-		return; //FIXME: Remove return and indicate to outside world that the app has failed to initialize BLE (e.g. LED blink pattern)
-	}
-	printk("Bluetooth initialized\n");
-	bt_ready();
+	// //Bluetooth
+	// err = bt_enable(NULL);
+	// if (err)
+	// {
+	// 	printk("Bluetooth init failed (err %d)\n", err);
+	// 	return; //FIXME: Remove return and indicate to outside world that the app has failed to initialize BLE (e.g. LED blink pattern)
+	// }
+	// printk("Bluetooth initialized\n");
+	// bt_ready();
+	ble_beacon_init();
 
 	//Initialize the battery measurement
 	//TODO: maybe this should be in the battery_level_thread
@@ -239,13 +238,16 @@ void main(void)
 		//
 		ad_bme280[2].data = adv_data;
 
-		//FIXME: maybe move this to the ble_beacon file, for consistency sake :)
-		err = bt_le_adv_update_data(ad_bme280, ARRAY_SIZE(ad_bme280),
-									sd, ARRAY_SIZE(sd));
+
+		// err = bt_le_adv_update_data(ad_bme280, ARRAY_SIZE(ad_bme280),
+		// 							sd, ARRAY_SIZE(sd));
+
+		err = ble_beacon_update_adv_data(ad_bme280, ARRAY_SIZE(ad_bme280));
+
 		if (err)
 		{
 			printk("Adv. data update failed (err %d)\n", err);
-			return; //FIXME:
+			//return; //FIXME:
 		}
 		/*
 		* Note:

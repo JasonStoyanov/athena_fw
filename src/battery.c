@@ -325,8 +325,3 @@ void battery_level_thread(int unused1, int unused2, int unused3)
 
 
 
-
-
-
-
-//If the battery level is below 20%, then send a message to the main thread to turn off the device
