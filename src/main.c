@@ -52,20 +52,7 @@
 #define LED_TOGGLE_INTERVAL_MS   1000
 #endif
 
-
 static uint8_t app_stat_reg;
-
-static struct bt_data ad_bme280[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
-	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
-	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
-				  0xaa, 0xfe,																											  /* Eddystone UUID */
-				  0x00,																													  /* Eddystone-UID frame type */
-				  0x00,																													  /* Calibrated Tx power at 0m */
-				  BT_UUID_16_ENCODE(0x1122), BT_UUID_16_ENCODE(0x3344), BT_UUID_16_ENCODE(0x5566), BT_UUID_16_ENCODE(0x7788), 0x08, 0x09, /* 10-byte Namespace */
-				  0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f)																					  /* 6-byte Instance */
-};
-
 static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
 							 0xaa, 0xfe,																											 /* Eddystone UUID */
 							 0x00,																													 /* Eddystone-UID frame type */
@@ -155,23 +142,9 @@ void main(void)
 	if (dev == NULL)
 	{
 		SET_FLAG(app_stat_reg, BME280_INIT_ERR);
-	//	return;
 	}
 	#endif
-	// #if (MCUBOOT_DBG == 1)
-	// printk("build time: " __DATE__ " " __TIME__ "\n");
-    // smp_bt_register();
-	// #endif
 
-	// //Bluetooth
-	// err = bt_enable(NULL);
-	// if (err)
-	// {
-	// 	printk("Bluetooth init failed (err %d)\n", err);
-	// 	return; //FIXME: Remove return and indicate to outside world that the app has failed to initialize BLE (e.g. LED blink pattern)
-	// }
-	// printk("Bluetooth initialized\n");
-	// bt_ready();
 	ble_beacon_init();
 
 	//Initialize the battery measurement
@@ -181,6 +154,10 @@ void main(void)
 		printk("Failed initialize battery measurement: %d\n", rc);
 		SET_FLAG(app_stat_reg, BATT_INIT_ERR);
 	}
+
+	//Set the pointer to the advertising data that will be updated 
+	//ad_bme280[2].data = adv_data;
+	ble_beacon_set_adv_frame_data(adv_data);
 
 	while (1)
 	{
@@ -233,21 +210,15 @@ void main(void)
 		adv_data[5] = ((temp.val1 >> 0) & 0xff);
 		adv_data[6] = ((temp.val2 / 10000) & 0xff);
 		adv_data[7] = ((humidity.val1 >> 0) & 0xff);
-		adv_data[9] = APP_VER;
 		adv_data[8] = app_stat_reg; 
-		//
-		ad_bme280[2].data = adv_data;
+		adv_data[9] = APP_VER;
+		
 
-
-		// err = bt_le_adv_update_data(ad_bme280, ARRAY_SIZE(ad_bme280),
-		// 							sd, ARRAY_SIZE(sd));
-
-		err = ble_beacon_update_adv_data(ad_bme280, ARRAY_SIZE(ad_bme280));
-
+		err = ble_beacon_update_adv_data();
 		if (err)
 		{
 			printk("Adv. data update failed (err %d)\n", err);
-			//return; //FIXME:
+			//return; //FIXME: How do we indicate that app update has failed?!?, maybe LED blink pattern?!?
 		}
 		/*
 		* Note:
