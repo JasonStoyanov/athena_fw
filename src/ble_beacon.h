@@ -10,6 +10,7 @@
 
 /** Non-connectable advertising with @ref BT_LE_ADV_OPT_USE_IDENTITY
  * and 1000ms interval. */
+//FIXME: the beacon should not be scannable!!
 #define BT_LE_ADV_NCONN_SLOW_ADV BT_LE_ADV_PARAM(BT_LE_ADV_OPT_SCANNABLE | BT_LE_ADV_OPT_USE_IDENTITY, \
 						 BT_GAP_ADV_SLOW_INT_MIN, \
 						 BT_GAP_ADV_SLOW_INT_MAX, \

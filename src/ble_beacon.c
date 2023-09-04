@@ -89,6 +89,9 @@ static struct bt_data non_connectable_data[] = {
 //SMP service UUID and Device name
 //Scan data returned by the non connectable device (Beacon)
 //Note: Scan data is limited to 31 bytes, so the SMP service UUID and device name should not exceed 31 bytes
+
+
+//FIXME: Avoid using Scan response, as it increases the current consumption of the beacon
 const struct bt_data non_connectable_sd[] = {	
 	/*
 	//SMP service UUID

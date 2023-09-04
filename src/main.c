@@ -24,6 +24,7 @@
 
 #include "battery.h"
 #include "ble_beacon.h"
+#include "buttons.h"
 
 
 #define STACKSIZE 500
@@ -34,7 +35,7 @@
 /*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
 #define LED_NODE DT_ALIAS(led4)
-#define BUTTON_NODE DT_ALIAS(sw4)
+
 
 #define APP_VER 0x03
 //App Status register bits
@@ -66,7 +67,6 @@ static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
  * See the sample documentation for information on how to fix this.
  */
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
-static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(BUTTON_NODE, gpios);
 const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
 
 extern const struct bt_data sd[2];
@@ -111,19 +111,14 @@ void main(void)
 	if (!gpio_is_ready_dt(&led)) {
 		return 0;
 	}
-	if (!gpio_is_ready_dt(&button)) {
-		return 0;
-	}
 
 	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_HIGH);
 	if (ret < 0) {
 		return 0;
 	}
 
-	ret = gpio_pin_configure_dt(&button, GPIO_INPUT | GPIO_PULL_UP);
-	if (ret < 0) {
-		return 0;
-	}
+	buttons_init();
+
  #if (LED_TEST_EN == 1)	
 	while (1) {
 		ret = gpio_pin_toggle_dt(&led);
