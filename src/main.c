@@ -23,19 +23,16 @@
 #include <zephyr/drivers/gpio.h>
 
 #include "battery.h"
-#include "ble_beacon.h"
 #include "buttons.h"
+#include "ble_beacon.h"
 
-
-#define STACKSIZE 500
-#define PRIORITY 5
-
+#define BAT_TH_STACKSIZE 500
+#define BAT_TH_PRIORITY 5
 #define BAT_LVL_THRESHOLD_MV 2000
 
 /*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
 #define LED_NODE DT_ALIAS(led4)
-
 
 #define APP_VER 0x03
 //App Status register bits
@@ -69,7 +66,7 @@ static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
 const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
 
-extern const struct bt_data sd[2];
+//extern const struct bt_data sd[2];
 
 /*
  * Get a device structure from a devicetree node with compatible
@@ -99,7 +96,12 @@ static const struct device *get_bme280_device(void)
 }
 
 
-//Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.
+static void button_event_handler(enum button_evt evt)
+{
+	//printk("Button event: %s\n", helper_button_evt_str(evt));
+}
+
+/*Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.*/
 void main(void)
 {
 
@@ -108,16 +110,20 @@ void main(void)
 	extern struct k_msgq batt_lvl_msgq; 
     int ret;
 
+	//TODO: move the led related stuff to separate file
 	if (!gpio_is_ready_dt(&led)) {
-		return 0;
+		return 0; //FIXME: main does not have return 
 	}
 
 	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_HIGH);
 	if (ret < 0) {
-		return 0;
+		return 0; //FIXME: main does not have return 
 	}
 
-	buttons_init();
+	ret = buttons_init(button_event_handler);
+	if (ret < 0) {
+	//		return 0; //FIXME: main does not have return 
+	}
 
  #if (LED_TEST_EN == 1)	
 	while (1) {
@@ -229,5 +235,5 @@ void main(void)
 }
 
 //Static thread for measuring the battery level
-K_THREAD_DEFINE(batt_level_id, STACKSIZE, battery_level_thread, NULL, NULL, NULL,
-		PRIORITY, 0, 0);
+K_THREAD_DEFINE(batt_level_id, BAT_TH_STACKSIZE, battery_level_thread, NULL, NULL, NULL,
+		BAT_TH_PRIORITY, 0, 0);
