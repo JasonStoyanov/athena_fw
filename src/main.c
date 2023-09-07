@@ -24,6 +24,7 @@
 
 #include "battery.h"
 #include "buttons.h"
+#include "led.h"
 #include "ble_beacon.h"
 
 #define BAT_TH_STACKSIZE 500
@@ -32,7 +33,6 @@
 
 /*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
-#define LED_NODE DT_ALIAS(led4)
 
 #define APP_VER 0x03
 //App Status register bits
@@ -63,7 +63,7 @@ static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
  * A build error on this line means your board is unsupported.
  * See the sample documentation for information on how to fix this.
  */
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
+
 const struct device *spi_dev=DEVICE_DT_GET(SENSOR_SPI);
 
 //extern const struct bt_data sd[2];
@@ -98,6 +98,11 @@ static const struct device *get_bme280_device(void)
 
 static void button_event_handler(enum button_evt evt)
 {
+
+	if (evt == BUTTON_EVT_PRESSED) 
+	{
+		led_toggle();
+	}
 	//printk("Button event: %s\n", helper_button_evt_str(evt));
 }
 
@@ -111,13 +116,9 @@ void main(void)
     int ret;
 
 	//TODO: move the led related stuff to separate file
-	if (!gpio_is_ready_dt(&led)) {
-		return 0; //FIXME: main does not have return 
-	}
-
-	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_HIGH);
+	ret = led_init();
 	if (ret < 0) {
-		return 0; //FIXME: main does not have return 
+	//		return 0; //FIXME: main does not have return 
 	}
 
 	ret = buttons_init(button_event_handler);
@@ -126,6 +127,7 @@ void main(void)
 	}
 
  #if (LED_TEST_EN == 1)	
+ //FIXME: no longer working the led is moved to led.c
 	while (1) {
 		ret = gpio_pin_toggle_dt(&led);
 		if (ret < 0) {

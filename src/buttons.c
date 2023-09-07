@@ -10,7 +10,6 @@
 
 #include "buttons.h"
 
-
 #define BUTTON_NODE DT_ALIAS(sw4)
 #define DEBOUNCE_WINDOW_MS 15
 
@@ -80,5 +79,6 @@ int buttons_init(button_event_handler_t handler) {
 }
 
 //TODO: make sure we are using PORT event and not GPIOTE IN event
+//This is done by adding the following to the devicetree: sense-edge-mask = < 0xffffffff >; to the gpio
 /*You use the SENSE bits in the PIN_CNF register to enable GPIO sensing and DETECT signal generation, and then enable the PORT interrupt in the GPIOTE module*/
 //NOTE: this will probably require enabling GPIOTE module in the devicetree!!
