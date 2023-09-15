@@ -1,3 +1,4 @@
+// Creator: Yasen Stoyanov
 #include <stdio.h>
 #include <stdlib.h>
 

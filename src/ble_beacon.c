@@ -1,3 +1,6 @@
+// Creator: Yasen Stoyanov
+// Brief: BLE beacon implementation for the Athena project
+// Date: 15/9/2023
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/conn.h>
@@ -185,7 +188,8 @@ static int advertising_set_create(struct bt_le_ext_adv **adv,
 		return err;
 	}
 
-	return bt_le_ext_adv_start(adv_set, BT_LE_EXT_ADV_START_DEFAULT);
+	//return bt_le_ext_adv_start(adv_set, BT_LE_EXT_ADV_START_DEFAULT);
+	return 0;
 }
 
 static int non_connectable_adv_create(void)
@@ -221,7 +225,7 @@ static int connectable_adv_create(void)
 }
 
 
-void ble_beacon_init(void) {
+int ble_beacon_init(void) {
 
 	int err;
 
@@ -235,26 +239,29 @@ void ble_beacon_init(void) {
 	err = bt_enable(NULL);
 	if (err) {
 		printk("Bluetooth init failed (err %d)\n", err);
-		return 0;
+		return err;
 	}
 
 	printk("Bluetooth initialized\n");
 
 	err = non_connectable_adv_create();
 	if (err) {
-		return 0;
+		return err;
 	}
+	//TODO: add return value check!
+	bt_le_ext_adv_start(ext_adv[NON_CONNECTABLE_ADV_IDX], BT_LE_EXT_ADV_START_DEFAULT);
 
 	printk("Non-connectable advertising started\n");
 
-	#if (CONNECTABLE_ADV_EN == 1)
+	//#if (CONNECTABLE_ADV_EN == 1)
 	err = connectable_adv_create();
 	if (err) {
-		return 0;
+		return err;
 	}
-	printk("Connectable advertising started\n");
-	#endif
+	printk("Connectable advertising Created\n");
+	//#endif
 
+	return 0;
 
 }
 
@@ -279,3 +286,21 @@ void  ble_beacon_set_adv_frame_data(uint8_t * adv_data) {
 	non_connectable_data[2].data = adv_data;
 }
 
+
+
+int ble_beacon_connectable_adv_start(void) {
+	int ret;
+	ret = bt_le_ext_adv_start(ext_adv[CONNECTABLE_ADV_IDX], BT_LE_EXT_ADV_START_DEFAULT);
+	if (ret) {
+		printk("Failed to Start connectable advertising\n");
+	}
+	printk("Connectable advertising started\n");
+	return ret;
+
+}
+
+
+int ble_beacon_connectable_adv_stop(void) {
+
+	return bt_le_ext_adv_stop(ext_adv[CONNECTABLE_ADV_IDX]);
+}

@@ -1,4 +1,4 @@
-/* YS Notes */
+// Creator: Yasen Stoyanov
 // BLE data is sent LSB first
 
 
@@ -30,6 +30,8 @@
 #define BAT_TH_STACKSIZE 500
 #define BAT_TH_PRIORITY 5
 #define BAT_LVL_THRESHOLD_MV 2000
+
+#define BTN_HOLD_TIME_MS 5000
 
 /*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
@@ -98,12 +100,28 @@ static const struct device *get_bme280_device(void)
 
 static void button_event_handler(enum button_evt evt)
 {
-
+	static int64_t btn_pressed_timestamp;
+	static uint8_t toggle_flag;
 	if (evt == BUTTON_EVT_PRESSED) 
 	{
-		led_toggle();
+		btn_pressed_timestamp = k_uptime_get();
 	}
-	//printk("Button event: %s\n", helper_button_evt_str(evt));
+	else if (evt == BUTTON_EVT_RELEASED) {
+		int64_t btn_hold_time; 
+		btn_hold_time = k_uptime_delta(&btn_pressed_timestamp); 
+		if (btn_hold_time > BTN_HOLD_TIME_MS) {
+			led_toggle(); //TODO: just pulse the LED as indication the button hold is detected
+			//TODO: And also check the return value!!! :)	
+			if (!toggle_flag) {
+				ble_beacon_connectable_adv_start();
+			}
+			else {
+				ble_beacon_connectable_adv_stop();
+			}
+			toggle_flag ^= 1;		
+		}
+		
+	}
 }
 
 /*Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.*/
