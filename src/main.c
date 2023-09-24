@@ -31,6 +31,10 @@
 #define BAT_TH_PRIORITY 5
 #define BAT_LVL_THRESHOLD_MV 2000
 
+#define LED_TH_STACKSIZE 500
+#define LED_TH_PRIORITY 5
+
+
 #define BTN_HOLD_TIME_MS 5000
 
 /*Get nodes from the devicetree */
@@ -51,6 +55,11 @@
 /* 1000 msec = 1 sec */
 #define LED_TOGGLE_INTERVAL_MS   1000
 #endif
+
+//Create a semaphore
+struct k_sem button_hold_sem;
+//static K_SEM_DEFINE(button_hold_sem, 0, 1);
+
 
 static uint8_t app_stat_reg;
 static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
@@ -110,7 +119,7 @@ static void button_event_handler(enum button_evt evt)
 		int64_t btn_hold_time; 
 		btn_hold_time = k_uptime_delta(&btn_pressed_timestamp); 
 		if (btn_hold_time > BTN_HOLD_TIME_MS) {
-			led_toggle(); //TODO: just pulse the LED as indication the button hold is detected
+			k_sem_give(&button_hold_sem);
 			//TODO: And also check the return value!!! :)	
 			if (!toggle_flag) {
 				ble_beacon_connectable_adv_start();
@@ -132,6 +141,8 @@ void main(void)
 	int stat;
 	extern struct k_msgq batt_lvl_msgq; 
     int ret;
+
+	k_sem_init(&button_hold_sem, 0, 1);
 
 	//TODO: move the led related stuff to separate file
 	ret = led_init();
@@ -257,3 +268,7 @@ void main(void)
 //Static thread for measuring the battery level
 K_THREAD_DEFINE(batt_level_id, BAT_TH_STACKSIZE, battery_level_thread, NULL, NULL, NULL,
 		BAT_TH_PRIORITY, 0, 0);
+
+//Static thread for measuring the battery level
+K_THREAD_DEFINE(led_toggle_id, LED_TH_STACKSIZE, led_toggle_thread, NULL, NULL, NULL,
+		LED_TH_PRIORITY, 0, 0);		
