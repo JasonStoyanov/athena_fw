@@ -29,6 +29,27 @@
      //  compatible = "nordic,nrf5340-dk-nrf5340-cpuapp";
        io-channels = <&adc 0>;
     };
+
+	/* These aliases are provided for compatibility with Athena Board. WIP */
+	aliases {
+		//led0 = &led0;
+		//led1 = &led1;
+		//led2 = &led2;
+		//led3 = &led3;
+		led4 = &led3;
+	//	pwm-led0 = &pwm_led0;
+	//	sw0 = &button0;
+	//	sw1 = &button1;
+	//	sw2 = &button2;
+	//	sw3 = &button3;
+		sw4 = &button1;
+		//bootloader-led0 = &led0;
+		//mcuboot-button0 = &button0;
+		//mcuboot-led0 = &led0;
+		//watchdog0 = &wdt0;
+		//spi-flash0 = &mx25r64;
+	};
+	
  };
 
 &spi2 {
