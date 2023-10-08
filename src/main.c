@@ -1,5 +1,14 @@
 // Creator: Yasen Stoyanov
 // BLE data is sent LSB first
+// App Brief: BLE beacon implementation for the Athena project
+//
+// The APP has two advertising sets: non-connectable and connectable
+// The non-connectable advertising set is used to advertise the sensor data
+// The connectable advertising set is used to advertise the device name and the ACS service
+// The ACS (Athena Configuration Service) is used for configuring the beacon ID (and other parameters in the future) 
+// The non-connectable advertising set is started by default
+// The connectable advertising set is started when the button is pressed for more than 5s
+//
 
 
 #include <zephyr/kernel.h>
@@ -125,6 +134,8 @@ static void button_event_handler(enum button_evt evt)
 				ble_beacon_connectable_adv_start();
 			}
 			else {
+				//Note: Advertising can be stopped only if it is active. If a connection is established, the advertising is stopped automatically,
+				// so calling this function will not have an effect. Firts the connection must be closed, and then the advertising can be stopped.
 				ble_beacon_connectable_adv_stop();
 			}
 			toggle_flag ^= 1;		

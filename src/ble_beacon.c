@@ -8,6 +8,7 @@
 #include <zephyr/bluetooth/gatt.h>
 
 #include "ble_beacon.h"
+#include "ble_acs.h"
 
 #define NON_CONNECTABLE_ADV_IDX 0
 #define CONNECTABLE_ADV_IDX     1
@@ -104,6 +105,18 @@ const struct bt_data non_connectable_sd[] = {
 			  */
 			  
 	BT_DATA(BT_DATA_NAME_COMPLETE, BEACON_NAME, BEACON_NAME_LEN),
+};
+
+
+static uint8_t g_athena_id;
+static void athena_id_cb(uint8_t beacon_id)
+{
+	g_athena_id = beacon_id;
+	//dk_set_led(USER_LED, led_state);
+}
+
+static struct ble_acs_cb acs_callbacks = {
+	.id_cb = athena_id_cb
 };
 
 static void adv_connected_cb(struct bt_le_ext_adv *adv,
@@ -243,6 +256,13 @@ int ble_beacon_init(void) {
 	}
 
 	printk("Bluetooth initialized\n");
+
+
+	err = ble_acs_init(&acs_callbacks);
+	if (err) {
+		printk("Failed to init Athena Configuration Service (err:%d)\n", err);
+		return err;
+	}
 
 	err = non_connectable_adv_create();
 	if (err) {

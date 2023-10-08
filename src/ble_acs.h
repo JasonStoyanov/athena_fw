@@ -13,10 +13,10 @@
 #define BT_UUID_ACS           BT_UUID_DECLARE_128(BT_UUID_ACS_VAL)
 #define BT_UUID_ACS_ID    BT_UUID_DECLARE_128(BT_UUID_ACS_ID_VAL)
 
-/** @brief Callback type for when an LED state change is received. */
-typedef void (*id_cb_t)(const bool led_state);
+/** @brief Callback type for when an  Beacon ID change is received. */
+typedef void (*id_cb_t)(const uint8_t id_value);
 
-/** @brief Callback struct used by the LBS Service. */
+/** @brief Callback struct used by the ACS Service. */
 struct ble_acs_cb {
 	/** ID state change callback. */
 	id_cb_t id_cb;
