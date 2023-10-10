@@ -144,6 +144,7 @@ static void button_event_handler(enum button_evt evt)
 	}
 }
 
+
 /*Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.*/
 void main(void)
 {
@@ -187,6 +188,11 @@ void main(void)
 		SET_FLAG(app_stat_reg, BME280_INIT_ERR);
 	}
 	#endif
+
+
+	//TODO: Retrieve from flash the beacon ID and set it
+	usf_init();
+	usf_load();
 
 	ble_beacon_init();
 
