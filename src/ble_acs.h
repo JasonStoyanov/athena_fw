@@ -5,10 +5,10 @@
 
 /* Define the 128-bit UUIDs for the GATT service and its characteristics. */
 #define BT_UUID_ACS_VAL \
-	BT_UUID_128_ENCODE(0x00001523, 0x1212, 0xefde, 0x1523, 0x785feabcd123)
+	BT_UUID_128_ENCODE(0x0000ff23, 0x1212, 0xefde, 0x1523, 0x785feabcd123)
 /** @brief Beacon Custom ID Characteristic UUID. */
 #define BT_UUID_ACS_ID_VAL \
-	BT_UUID_128_ENCODE(0x00001524, 0x1212, 0xefde, 0x1523, 0x785feabcd123)
+	BT_UUID_128_ENCODE(0x0000ff24, 0x1212, 0xefde, 0x1523, 0x785feabcd123)
 
 #define BT_UUID_ACS           BT_UUID_DECLARE_128(BT_UUID_ACS_VAL)
 #define BT_UUID_ACS_ID    BT_UUID_DECLARE_128(BT_UUID_ACS_ID_VAL)
