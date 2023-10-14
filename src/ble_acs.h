@@ -16,10 +16,15 @@
 /** @brief Callback type for when an  Beacon ID change is received. */
 typedef void (*id_cb_t)(const uint8_t id_value);
 
+/** @brief Callback type for when the Beacon ID state is pulled. */
+typedef uint8_t (*id_rd_cb_t)(void);
+
 /** @brief Callback struct used by the ACS Service. */
 struct ble_acs_cb {
-	/** ID state change callback. */
+	/** ID state change callback. Callled when write is perfomed*/
 	id_cb_t id_cb;
+	id_rd_cb_t id_rd_cb;
+
 };
 
 /** @brief Initialize the ACS Service.

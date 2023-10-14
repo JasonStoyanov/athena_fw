@@ -112,11 +112,17 @@ static uint8_t g_athena_id;
 static void athena_id_cb(uint8_t beacon_id)
 {
 	g_athena_id = beacon_id;
-	//dk_set_led(USER_LED, led_state);
+
+}
+
+static uint8_t athena_id_rd_cb(void)
+{
+	return g_athena_id;
 }
 
 static struct ble_acs_cb acs_callbacks = {
-	.id_cb = athena_id_cb
+	.id_cb = athena_id_cb,
+	.id_rd_cb = athena_id_rd_cb
 };
 
 static void adv_connected_cb(struct bt_le_ext_adv *adv,
