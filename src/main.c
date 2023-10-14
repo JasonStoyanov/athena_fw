@@ -67,8 +67,6 @@
 
 //Create a semaphore
 struct k_sem button_hold_sem;
-//static K_SEM_DEFINE(button_hold_sem, 0, 1);
-
 
 static uint8_t app_stat_reg;
 static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
@@ -260,8 +258,8 @@ void main(void)
 		adv_data[6] = ((temp.val2 / 10000) & 0xff);
 		adv_data[7] = ((humidity.val1 >> 0) & 0xff);
 		adv_data[8] = app_stat_reg; 
-		adv_data[9] = APP_VER;
-		
+		adv_data[9] = APP_VER; //TODO: set this once in the beginning, no need to updated as it does not change
+		adv_data[10] = ble_beacon_get_athena_id();
 
 		err = ble_beacon_update_adv_data();
 		if (err)

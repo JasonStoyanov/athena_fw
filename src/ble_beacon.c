@@ -96,6 +96,8 @@ static struct bt_data non_connectable_data[] = {
 
 
 //FIXME: Avoid using Scan response, as it increases the current consumption of the beacon
+//Also the scan should be initiated by the mobile device, which drains its battery
+//For the non-connectable beacon, the scan response is not needed
 const struct bt_data non_connectable_sd[] = {	
 	/*
 	//SMP service UUID
@@ -111,13 +113,15 @@ const struct bt_data non_connectable_sd[] = {
 static uint8_t g_athena_id;
 static void athena_id_cb(uint8_t beacon_id)
 {
-	g_athena_id = beacon_id;
+	//g_athena_id = beacon_id;
+	ble_beacon_set_athena_id(beacon_id);
 
 }
 
 static uint8_t athena_id_rd_cb(void)
 {
-	return g_athena_id;
+	return ble_beacon_get_athena_id();
+	//return g_athena_id;
 }
 
 static struct ble_acs_cb acs_callbacks = {
@@ -329,4 +333,16 @@ int ble_beacon_connectable_adv_start(void) {
 int ble_beacon_connectable_adv_stop(void) {
 
 	return bt_le_ext_adv_stop(ext_adv[CONNECTABLE_ADV_IDX]);
+}
+
+
+//function that sets the value of g_athena_id
+int ble_beacon_set_athena_id(uint8_t value) {
+	g_athena_id = value;
+	return 0;
+}
+
+//function that gets the value of g_athena_id
+uint8_t ble_beacon_get_athena_id(void) {
+	return g_athena_id;
 }
