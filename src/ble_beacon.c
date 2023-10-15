@@ -9,6 +9,7 @@
 
 #include "ble_beacon.h"
 #include "ble_acs.h"
+#include "usf.h"
 
 #define NON_CONNECTABLE_ADV_IDX 0
 #define CONNECTABLE_ADV_IDX     1
@@ -115,6 +116,7 @@ static void athena_id_cb(uint8_t beacon_id)
 {
 	//g_athena_id = beacon_id;
 	ble_beacon_set_athena_id(beacon_id);
+	usf_write_beacon_id(beacon_id);
 
 }
 

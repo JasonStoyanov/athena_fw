@@ -15,6 +15,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/fs/nvs.h>
 #include "usf.h"
+#include "ble_beacon.h"
 
 static struct nvs_fs fs;
 
@@ -63,8 +64,8 @@ int usf_load(void)
 
 	ret = nvs_read(&fs, BEACONID_ID, &beacon_id, sizeof(beacon_id));
 	if (ret > 0) { /* item was found, show it */
-		printk("Id: %d, Address: %s\n", BEACONID_ID, beacon_id);
-        //TODO: load the read value into the beacon ID array from the adv data in main.c
+	//	printk("Id: %d, Address: %s\n", BEACONID_ID, beacon_id);
+		ble_beacon_set_athena_id(beacon_id);
 	} else   {/* item was not found*/
 		printk("Id: %d, not found\n", BEACONID_ID);
         //TODO: Set the default value for the beacon ID outside this function
