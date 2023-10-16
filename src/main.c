@@ -1,5 +1,14 @@
 // Creator: Yasen Stoyanov
 // BLE data is sent LSB first
+// App Brief: BLE beacon implementation for the Athena project
+//
+// The APP has two advertising sets: non-connectable and connectable
+// The non-connectable advertising set is used to advertise the sensor data
+// The connectable advertising set is used to advertise the device name and the ACS service
+// The ACS (Athena Configuration Service) is used for configuring the beacon ID (and other parameters in the future) 
+// The non-connectable advertising set is started by default
+// The connectable advertising set is started when the button is pressed for more than 5s
+//
 
 
 #include <zephyr/kernel.h>
@@ -58,8 +67,6 @@
 
 //Create a semaphore
 struct k_sem button_hold_sem;
-//static K_SEM_DEFINE(button_hold_sem, 0, 1);
-
 
 static uint8_t app_stat_reg;
 static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
@@ -125,6 +132,8 @@ static void button_event_handler(enum button_evt evt)
 				ble_beacon_connectable_adv_start();
 			}
 			else {
+				//Note: Advertising can be stopped only if it is active. If a connection is established, the advertising is stopped automatically,
+				// so calling this function will not have an effect. Firts the connection must be closed, and then the advertising can be stopped.
 				ble_beacon_connectable_adv_stop();
 			}
 			toggle_flag ^= 1;		
@@ -132,6 +141,7 @@ static void button_event_handler(enum button_evt evt)
 		
 	}
 }
+
 
 /*Note: The app main() function is called by the Zephyr main thread, after the kernel has benn initialized.*/
 void main(void)
@@ -176,6 +186,11 @@ void main(void)
 		SET_FLAG(app_stat_reg, BME280_INIT_ERR);
 	}
 	#endif
+
+
+	//TODO: Retrieve from flash the beacon ID and set it
+	usf_init();
+	usf_load();
 
 	ble_beacon_init();
 
@@ -243,8 +258,8 @@ void main(void)
 		adv_data[6] = ((temp.val2 / 10000) & 0xff);
 		adv_data[7] = ((humidity.val1 >> 0) & 0xff);
 		adv_data[8] = app_stat_reg; 
-		adv_data[9] = APP_VER;
-		
+		adv_data[9] = APP_VER; //TODO: set this once in the beginning, no need to updated as it does not change
+		adv_data[10] = ble_beacon_get_athena_id();
 
 		err = ble_beacon_update_adv_data();
 		if (err)

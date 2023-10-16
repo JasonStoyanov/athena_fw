@@ -69,4 +69,8 @@ int ble_beacon_connectable_adv_stop(void);
  */
 int ble_beacon_connectable_adv_start(void);
 
+
+int ble_beacon_set_athena_id(uint8_t value);
+uint8_t ble_beacon_get_athena_id(void);
+
 #endif /* BLE_BEACON_H_ */
