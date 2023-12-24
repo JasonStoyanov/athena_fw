@@ -49,7 +49,7 @@
 /*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
 
-#define APP_VER 0x03
+#define APP_VER 0x04
 //App Status register bits
 #define BME280_INIT_ERR 0x01
 #define BATT_LOW     	0x02
@@ -69,11 +69,15 @@
 struct k_sem button_hold_sem;
 
 static uint8_t app_stat_reg;
-static uint8_t adv_data[] = {BT_DATA_SVC_DATA16,
-							 0xaa, 0xfe,																											 /* Eddystone UUID */
+static uint8_t adv_data[] = {0xaa,
+							 0xfe,																											 /* Eddystone UUID */
 							 0x00,																													 /* Eddystone-UID frame type */
 							 0x00,																													 /* Calibrated Tx power at 0m */
-							 BT_UUID_16_ENCODE(0x1122), BT_UUID_16_ENCODE(0x3344), BT_UUID_16_ENCODE(0x5566), BT_UUID_16_ENCODE(0x7788), 0x08, 0x09, /* 10-byte Namespace */
+							 BT_UUID_16_ENCODE(0x1122), 
+							 BT_UUID_16_ENCODE(0x3344), 
+							 BT_UUID_16_ENCODE(0x5566),
+							 BT_UUID_16_ENCODE(0x7788),
+							 0x08, 0x09, /* 10-byte Namespace */
 							 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 
