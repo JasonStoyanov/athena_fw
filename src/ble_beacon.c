@@ -302,7 +302,7 @@ int ble_beacon_update_adv_data(void)
 	int err;
 
 	err = bt_le_ext_adv_set_data(ext_adv[NON_CONNECTABLE_ADV_IDX], non_connectable_data, ARRAY_SIZE(non_connectable_data),
-	 			     non_connectable_sd,ARRAY_SIZE(non_connectable_sd));
+	 			     NULL,0);
 
 	if (err) {
 		printk("Failed to set advertising data (err %d)\n", err);

@@ -49,7 +49,7 @@
 /*Get nodes from the devicetree */
 #define SENSOR_SPI DT_NODELABEL(spi2)
 
-#define APP_VER 0x04
+#define APP_VER 0x05
 //App Status register bits
 #define BME280_INIT_ERR 0x01
 #define BATT_LOW     	0x02
@@ -192,7 +192,7 @@ void main(void)
 	#endif
 
 
-	//TODO: Retrieve from flash the beacon ID and set it
+	//Retrieve from flash the beacon ID and set it
 	usf_init();
 	usf_load();
 
