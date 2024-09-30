@@ -1,0 +1,8 @@
+
+= Athena Project FW
+:hardbreaks-option:
+
+
+Additional information regarding the project can be found in the following articles:
+https://open4tech.com/how-to-create-a-ble-sensor-beacon-part-1-the-hardware/
+https://open4tech.com/how-to-create-a-ble-sensor-beacon-part-2-the-firmware/
